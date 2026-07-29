@@ -55,7 +55,15 @@ def read_required_env(name: str) -> str:
 
 
 TELEGRAM_BOT_TOKEN = read_required_env("TELEGRAM_BOT_TOKEN")
-LOG_URL = read_required_env("LOG_URL")
+
+# Dynamic LOG_URL detection: uses LOG_URL env if provided, or auto-detects Render URL
+LOG_URL = os.environ.get("LOG_URL")
+if not LOG_URL or LOG_URL == "auto":
+    render_url = os.environ.get("RENDER_EXTERNAL_URL")
+    if render_url:
+        LOG_URL = f"{render_url.rstrip('/')}/run.jsonl"
+    else:
+        LOG_URL = "http://localhost:8000/run.jsonl"
 
 # List of supported LLM Providers in priority order (as given in .env).
 PROVIDERS = [
