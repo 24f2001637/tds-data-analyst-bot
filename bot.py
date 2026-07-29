@@ -17,7 +17,13 @@ LOG_FILE = "run.jsonl"
 
 class LogHTTPRequestHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
-        if self.path in ["/", "/run.jsonl"]:
+        if self.path in ["/ping", "/health", "/healthz"]:
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(b'{"status":"ok","message":"pong"}')
+        elif self.path in ["/", "/run.jsonl"]:
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Access-Control-Allow-Origin", "*")
@@ -27,6 +33,15 @@ class LogHTTPRequestHandler(SimpleHTTPRequestHandler):
                     self.wfile.write(f.read())
             else:
                 self.wfile.write(b"")
+        else:
+            self.send_error(404, "File Not Found")
+
+    def do_HEAD(self):
+        if self.path in ["/", "/run.jsonl", "/ping", "/health", "/healthz"]:
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
         else:
             self.send_error(404, "File Not Found")
 
@@ -40,6 +55,34 @@ def start_log_web_server():
     server = HTTPServer(("0.0.0.0", port), LogHTTPRequestHandler)
     print(f"Log HTTP web server serving {LOG_FILE} on port {port}...")
     server.serve_forever()
+
+
+def keep_alive_pinger():
+    """Background thread to ping the web server periodically to keep Render instance awake."""
+    ping_url = os.environ.get("PING_URL") or os.environ.get("RENDER_EXTERNAL_URL")
+    if not ping_url:
+        return
+
+    if not ping_url.startswith("http"):
+        ping_url = "https://" + ping_url
+
+    ping_endpoint = ping_url.rstrip("/") + "/ping"
+    interval = int(os.environ.get("PING_INTERVAL", 600))
+
+    import urllib.request
+    print(f"Keep-alive pinger active. Target: {ping_endpoint} (interval: {interval}s)")
+    while True:
+        time.sleep(interval)
+        try:
+            req = urllib.request.Request(
+                ping_endpoint,
+                headers={"User-Agent": "Render-KeepAlive-Pinger/1.0"}
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                if resp.status == 200:
+                    print(f"[Keep-Alive] Ping to {ping_endpoint} succeeded.")
+        except Exception as e:
+            print(f"[Keep-Alive] Ping to {ping_endpoint} failed: {e}")
 
 
 
@@ -252,6 +295,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == "__main__":
     # Start log web server in a daemon background thread
     threading.Thread(target=start_log_web_server, daemon=True).start()
+
+    # Start keep-alive self-pinger thread (if PING_URL or RENDER_EXTERNAL_URL is configured)
+    threading.Thread(target=keep_alive_pinger, daemon=True).start()
 
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))

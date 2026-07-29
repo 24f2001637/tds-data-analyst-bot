@@ -69,3 +69,37 @@ Upon startup, the bot will start polling for Telegram messages and listening on 
 4. Set **Start Command**: `python bot.py`
 5. Add your environment variables in the Render dashboard. Set `LOG_URL` to `https://<your-render-app>.onrender.com/run.jsonl`.
 6. Deploy! The bot and live `run.jsonl` HTTP endpoint will be online.
+
+---
+
+## Keeping Render Awake (Preventing Inactivity Spindown)
+
+Render's free tier Web Services spin down (go to sleep) after **15 minutes of inactivity**. When slept, incoming Telegram messages or log evaluation requests will experience latency while the app cold-starts.
+
+To keep your bot active **24/7**, use any of the following pinging solutions:
+
+### Option 1: External Pinger (UptimeRobot - Recommended)
+
+1. Sign up for a free account at [UptimeRobot.com](https://uptimerobot.com/).
+2. Click **+ Add New Monitor**.
+3. Configure the monitor details:
+   - **Monitor Type**: `HTTP(s)` or `Keyword`
+   - **Friendly Name**: `TDS Data Analyst Bot`
+   - **URL (or IP)**: `https://<your-app-name>.onrender.com/ping` (or `/health`)
+   - **Monitoring Interval**: `5 minutes` or `10 minutes`
+4. Click **Create Monitor**. UptimeRobot will ping your server every few minutes, preventing Render from going idle.
+
+### Option 2: Built-in Self-Pinger
+
+`bot.py` includes a built-in keep-alive background thread that periodically pings its own endpoint:
+
+1. In your Render Dashboard, add an environment variable:
+   - `RENDER_EXTERNAL_URL` = `https://<your-app-name>.onrender.com` (Render sets this automatically if enabled, or set `PING_URL=https://<your-app-name>.onrender.com`)
+   - `PING_INTERVAL` = `600` (optional, default 10 minutes)
+2. On startup, `bot.py` will launch a background thread that sends an HTTP GET request to `https://<your-app-name>.onrender.com/ping` every 10 minutes.
+
+### Available Health & Ping Endpoints
+
+- `GET /ping` or `GET /health` or `GET /healthz` — Returns `{"status":"ok","message":"pong"}`
+- `HEAD /ping` or `HEAD /` — Returns `200 OK` (lightweight for HEAD pingers)
+
