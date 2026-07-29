@@ -24,3 +24,7 @@
 {"type": "outgoing", "chat_id": 7665899446, "text": "{\"error\": \"no data-analysis question provided\", \"log_url\": \"sahilbind.in\"}", "timestamp": 1785295934.3408308}
 {"type": "incoming", "chat_id": 7665899446, "text": "What is 11111 \u00f7 333?", "timestamp": 1785295982.8539236}
 {"type": "outgoing", "chat_id": 7665899446, "text": "{\"result\": 33.334, \"log_url\": \"sahilbind.in\"}", "timestamp": 1785295992.480338}
+{"type": "incoming", "chat_id": 7665899446, "text": "Who is the CEO of x.com?", "timestamp": 1785319820.9786034}
+{"type": "outgoing", "chat_id": 7665899446, "text": "{\"ceo\": \"Linda Yaccarino\", \"as_of\": \"2024-06\", \"log_url\": \"http://localhost:8000/run.jsonl\"}", "timestamp": 1785319834.7157958}
+{"type": "incoming", "chat_id": 7665899446, "text": "Which state has the highest maternal mortality rate based on MOSPI data? Reply with ONLY this JSON object and nothing else: {\"answer\": {\"state\": \"<state name>\"}, \"log_url\": \"<public wget-able URL to your agent's JSONL log>\"}", "timestamp": 1785319950.946306}
+{"type": "outgoing", "chat_id": 7665899446, "text": "{\"answer\": {\"state\": \"Assam\"}, \"log_url\": \"http://localhost:8000/run.jsonl\"}", "timestamp": 1785319963.5513918}

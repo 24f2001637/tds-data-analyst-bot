@@ -42,10 +42,6 @@ def start_log_web_server():
     server.serve_forever()
 
 
-# Start log web server in a daemon background thread
-threading.Thread(target=start_log_web_server, daemon=True).start()
-
-
 
 def read_required_env(name: str) -> str:
     value = os.environ.get(name)
@@ -139,6 +135,7 @@ def get_llm_response(messages: list) -> str:
             client = OpenAI(
                 base_url=provider["base_url"],
                 api_key=api_key,
+                timeout=30.0,
             )
             response = client.chat.completions.create(
                 model=model,
@@ -169,14 +166,32 @@ def log_event(event: dict):
         f.write(json.dumps(event) + "\n")
 
 
-def extract_json_object(reply_text: str) -> dict:
+def extract_json_object(reply_text: str):
+    text = reply_text.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+
     try:
-        return json.loads(reply_text)
+        return json.loads(text)
     except json.JSONDecodeError:
-        start, end = reply_text.find("{"), reply_text.rfind("}")
-        if start == -1 or end == -1 or end < start:
-            raise
-        return json.loads(reply_text[start : end + 1])
+        obj_start, obj_end = text.find("{"), text.rfind("}")
+        if obj_start != -1 and obj_end > obj_start:
+            try:
+                return json.loads(text[obj_start : obj_end + 1])
+            except json.JSONDecodeError:
+                pass
+        arr_start, arr_end = text.find("["), text.rfind("]")
+        if arr_start != -1 and arr_end > arr_start:
+            try:
+                return json.loads(text[arr_start : arr_end + 1])
+            except json.JSONDecodeError:
+                pass
+        raise
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -217,19 +232,30 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_text = message_content.strip()
     history.append({"role": "assistant", "content": reply_text})
 
-    # Make sure we actually reply with valid JSON containing "log_url" — if the model
-    # forgot the log_url field or wrapped it in markdown, fix it up here so the grader
-    # never sees a malformed reply.
+    # Make sure we reply with valid JSON containing "answer" and "log_url"
     parsed = extract_json_object(reply_text)
-    parsed["log_url"] = LOG_URL
-    final_reply = json.dumps(parsed)
+    if isinstance(parsed, dict) and "answer" in parsed:
+        answer_val = parsed["answer"]
+    else:
+        answer_val = parsed
+
+    final_obj = {
+        "answer": answer_val,
+        "log_url": LOG_URL
+    }
+    final_reply = json.dumps(final_obj)
 
     log_event({"type": "outgoing", "chat_id": chat_id, "text": final_reply})
     await update.message.reply_text(final_reply)
 
 
-app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-print("Bot is running... (Ctrl+C to stop)")
-app.run_polling(drop_pending_updates=True)
+if __name__ == "__main__":
+    # Start log web server in a daemon background thread
+    threading.Thread(target=start_log_web_server, daemon=True).start()
+
+    app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    print("Bot is running... (Ctrl+C to stop)")
+    app.run_polling(drop_pending_updates=True)
+
 
