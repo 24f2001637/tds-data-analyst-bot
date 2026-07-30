@@ -1,7 +1,9 @@
 import json
 import os
+import re
 import threading
 import time
+import urllib.request
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 from dotenv import load_dotenv
@@ -237,6 +239,42 @@ def extract_json_object(reply_text: str):
         raise
 
 
+def fetch_urls_in_text(text: str) -> str:
+    """Finds URLs in the text (cleaning internal spaces in paths and stripping attached prompt text), fetches their contents, and returns a formatted string."""
+    candidates = re.findall(r'https?://[^\s<>"]+(?:\s+[^\s<>"]+)*', text)
+    if not candidates:
+        return ""
+
+    fetched_sections = []
+    seen_urls = set()
+    for candidate in candidates:
+        cleaned = re.sub(r'\s+', '', candidate)
+        match = re.search(r'(https?://.+?\.(?:csv|json|txt|tsv|html|xml|pdf))', cleaned, re.IGNORECASE)
+        if match:
+            url = match.group(1)
+        else:
+            url = candidate.rstrip('.,;:!?)"}\']')
+        
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (TDS-Data-Analyst-Bot/1.0)"}
+            )
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                data = resp.read().decode("utf-8", errors="ignore")
+                if len(data) > 10000:
+                    data = data[:10000] + "\n...[truncated]"
+                fetched_sections.append(f"\n\n[Auto-Fetched Data Content from {url}]:\n{data}")
+        except Exception as e:
+            print(f"[Warning] Could not auto-fetch {url}: {e}")
+
+    return "".join(fetched_sections)
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (
         update.effective_chat is None
@@ -256,8 +294,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
     log_event({"type": "incoming", "chat_id": chat_id, "text": user_text})
 
+    # Auto-fetch dataset/file URLs embedded in user prompt
+    extra_data = fetch_urls_in_text(user_text)
+    prompt_content = user_text + extra_data
+
     history = conversation_history.setdefault(chat_id, [])
-    history.append({"role": "user", "content": user_text})
+    history.append({"role": "user", "content": prompt_content})
 
     # Ask the AI to work out the answer. The system prompt tells it exactly how to
     # format the final reply — this is the part that MUST match what the question asked.
