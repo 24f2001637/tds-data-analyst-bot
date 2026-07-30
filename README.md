@@ -70,7 +70,7 @@ cp .env.example .env
 Example `.env` configuration:
 ```env
 # Telegram Bot Configuration
-TELEGRAM_BOT_TOKEN=8958999824:AAFX0a5O3y8lS1Zm934eOrFm9B1erPy3gdA
+TELEGRAM_BOT_TOKEN=your_bot_token
 LOG_URL=auto
 
 # AI Credentials (Provide at least one)
