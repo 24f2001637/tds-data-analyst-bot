@@ -114,13 +114,6 @@ PROVIDERS = [
         "model_env": "AIPIPE_MODEL",
     },
     {
-        "name": "Gemini API",
-        "keys": ["GEMINI_API_KEY", "GEMINI_KEY"],
-        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
-        "default_model": "gemini-flash-latest",
-        "model_env": "GEMINI_MODEL",
-    },
-    {
         "name": "Groq",
         "keys": ["GROQ_API_KEY"],
         "base_url": "https://api.groq.com/openai/v1",
@@ -128,18 +121,25 @@ PROVIDERS = [
         "model_env": "GROQ_MODEL",
     },
     {
-        "name": "NVIDIA NIM",
-        "keys": ["NVIDIA_API_KEY", "NVIDIA_NIM_KEY", "NVIDIA_KEY"],
-        "base_url": "https://integrate.api.nvidia.com/v1",
-        "default_model": "meta/llama-3.3-70b-instruct",
-        "model_env": "NVIDIA_MODEL",
+        "name": "Gemini API",
+        "keys": ["GEMINI_API_KEY", "GEMINI_KEY"],
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+        "default_model": "gemini-flash-latest",
+        "model_env": "GEMINI_MODEL",
     },
     {
         "name": "OpenRouter",
         "keys": ["OPENROUTER_API_KEY", "OPENROUTER_KEY"],
         "base_url": "https://openrouter.ai/api/v1",
-        "default_model": "meta-llama/llama-3.3-70b-instruct:free",
+        "default_model": "meta-llama/llama-3.3-70b-instruct",
         "model_env": "OPENROUTER_MODEL",
+    },
+    {
+        "name": "NVIDIA NIM",
+        "keys": ["NVIDIA_API_KEY", "NVIDIA_NIM_KEY", "NVIDIA_KEY"],
+        "base_url": "https://integrate.api.nvidia.com/v1",
+        "default_model": "nvidia/nemotron-mini-4b-instruct",
+        "model_env": "NVIDIA_MODEL",
     },
 ]
 
