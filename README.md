@@ -1,29 +1,56 @@
-# TDS Data Analyst Telegram Bot
+# 🤖 TDS Data Analyst Telegram Bot
 
-An automated Data Analyst Telegram Bot built for the IITM BS Tools in Data Science (TDS) project evaluation. The bot processes data-analysis queries, synthesizes structured JSON answers using multi-provider LLM failover, logs incoming/outgoing events, and serves `run.jsonl` dynamically over HTTP/HTTPS.
+An automated, resilient Data Analyst Telegram Bot built for the **IITM BS Tools in Data Science (TDS)** project evaluation.
 
-## Key Features
+The bot receives natural language data-analysis queries via Telegram, computes precise analytical answers, synthesizes structured JSON payloads using multi-provider LLM failover, logs events to `run.jsonl`, and dynamically serves logs over HTTP/HTTPS.
 
-- **Multi-Provider LLM Fallback**: Automatically tries active LLM providers in priority order (`AI Pipe` → `Gemini API` → `Groq` → `NVIDIA NIM` → `OpenRouter`). If a provider hits rate limits or error codes (e.g. 429), it falls back seamlessly to the next configured provider.
-- **Embedded Log Web Server**: Features an integrated daemon HTTP server that serves `run.jsonl` live at `/run.jsonl` for evaluation graders when deployed to cloud hosts (Render, Koyeb, VPS).
-- **Strict JSON Enforcement**: Parses and validates model responses to guarantee strict, raw JSON payloads containing the required `log_url` field.
-- **Update Deduplication**: Prevents duplicate message handling and bot conflict errors.
+---
 
-## Project Structure
+## 🌟 Key Features
+
+- **Multi-Provider LLM Failover Matrix**: Priority-ordered cascade across 5 major AI providers (`AI Pipe` → `Groq` → `Gemini API` → `OpenRouter` → `NVIDIA NIM`). If a provider encounters rate limits (429), timeouts, or model errors, the bot seamlessly falls back to the next available provider.
+- **Embedded Log Web Server**: Features an integrated daemon HTTP server that live-serves `run.jsonl` at `/run.jsonl`, `/`, `/ping`, and `/health` endpoints for grading and health monitoring.
+- **Auto-Detecting Log URL**: Automatically resolves the public `LOG_URL` using Render environment variables (`RENDER_EXTERNAL_URL`) or local configuration.
+- **Strict JSON Enforcement & Repair**: Parses model outputs and extracts valid JSON payloads, guaranteeing the required `"answer"` and `"log_url"` fields are delivered back to Telegram.
+- **Keep-Alive Self-Pinger**: Built-in background pinger prevents free-tier cloud hosting (e.g. Render) from spinning down due to inactivity.
+- **Update Deduplication & Multi-Turn History**: Deduplicates Telegram updates to prevent duplicate replies and maintains concise conversation history for contextual follow-ups.
+
+---
+
+## ⚡ Supported LLM Providers & Models
+
+The bot automatically activates any provider for which an API key is present in `.env`. Providers are queried in the following priority order:
+
+| Priority | Provider | Default Model | Key Env Variable | Strengths & Capabilities |
+| :---: | :--- | :--- | :--- | :--- |
+| **#1** | **AI Pipe** | `gpt-5-mini` | `AIPIPE_TOKEN` | **Flagship Intelligence**: Top-tier data analysis, math precision, and strict JSON adherence. |
+| **#2** | **Groq** | `llama-3.3-70b-versatile` | `GROQ_API_KEY` | **Ultra-Fast Speed**: ~300+ tokens/sec LPU hardware with 70B parameter model reasoning. |
+| **#3** | **Gemini API** | `gemini-flash-latest` | `GEMINI_API_KEY` | **Google Gemini**: Massive context window, strong math and structured data skills. |
+| **#4** | **OpenRouter** | `meta-llama/llama-3.3-70b-instruct` | `OPENROUTER_API_KEY` | **Multi-Node Fallback**: Reliable 70B model fallback routed across OpenRouter's cloud network. |
+| **#5** | **NVIDIA NIM** | `nvidia/nemotron-mini-4b-instruct` | `NVIDIA_API_KEY` | **Lightweight Backup**: Fast 4B parameter native NVIDIA model as a final safety net. |
+
+> 💡 **Custom Model Overrides**: You can override any default model without changing code by setting custom environment variables in `.env` (e.g., `AIPIPE_MODEL=gpt-5`, `GROQ_MODEL=llama-3.3-70b-versatile`, `GEMINI_MODEL=gemini-2.0-flash`, etc.).
+
+---
+
+## 📁 Repository Structure
 
 ```text
-.
-├── bot.py             # Main Telegram bot & embedded HTTP log server
-├── requirements.txt   # Dependencies
+tds-data-analyst-bot/
+├── bot.py             # Main Telegram bot logic, LLM failover, & embedded HTTP log server
+├── requirements.txt   # Python package dependencies
 ├── .env.example       # Environment variables template
-├── .env               # Local environment secrets (ignored by git)
-└── run.jsonl          # Event log file (generated at runtime)
+├── .env               # Secrets & API keys configuration (git-ignored)
+├── README.md          # Project documentation
+└── run.jsonl          # Event log file generated automatically at runtime
 ```
 
-## Setup & Installation
+---
+
+## 🚀 Setup & Installation
 
 ### 1. Prerequisites
-- Python 3.10+
+- **Python 3.10+**
 - Telegram Bot Token from [@BotFather](https://t.me/BotFather)
 
 ### 2. Clone & Install Dependencies
@@ -33,8 +60,8 @@ cd tds-data-analyst-bot
 pip install -r requirements.txt
 ```
 
-### 3. Environment Variables
-Copy `.env.example` to `.env` and fill in your keys:
+### 3. Configure Environment Variables
+Copy `.env.example` to `.env` and insert your credentials:
 
 ```bash
 cp .env.example .env
@@ -42,64 +69,73 @@ cp .env.example .env
 
 Example `.env` configuration:
 ```env
-TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyZ
-LOG_URL=https://your-app-name.onrender.com/run.jsonl
+# Telegram Bot Configuration
+TELEGRAM_BOT_TOKEN=8958999824:AAFX0a5O3y8lS1Zm934eOrFm9B1erPy3gdA
+LOG_URL=auto
 
-# LLM Provider Keys (Provide at least one)
+# AI Credentials (Provide at least one)
 AIPIPE_TOKEN=your_aipipe_token
-GEMINI_API_KEY=your_gemini_api_key
 GROQ_API_KEY=your_groq_api_key
-NVIDIA_API_KEY=your_nvidia_api_key
+GEMINI_API_KEY=your_gemini_api_key
 OPENROUTER_API_KEY=your_openrouter_api_key
+NVIDIA_API_KEY=your_nvidia_api_key
 ```
 
-## Running the Bot Locally
+---
+
+## 💻 Running the Bot Locally
 
 ```bash
 python bot.py
 ```
 
-Upon startup, the bot will start polling for Telegram messages and listening on HTTP port `8000` (or the configured `PORT`) to serve `run.jsonl`.
-
-## Deployment (e.g., Render / Koyeb)
-
-1. Push this repository to GitHub.
-2. Create a **New Web Service** on [Render](https://render.com/).
-3. Set **Build Command**: `pip install -r requirements.txt`
-4. Set **Start Command**: `python bot.py`
-5. Add your environment variables in the Render dashboard. Set `LOG_URL` to `https://<your-render-app>.onrender.com/run.jsonl`.
-6. Deploy! The bot and live `run.jsonl` HTTP endpoint will be online.
+Upon launch:
+1. The Telegram Bot starts polling for incoming user messages.
+2. The embedded log web server starts listening on port `8000` (or `PORT` env) to serve `run.jsonl` at `http://localhost:8000/run.jsonl`.
 
 ---
 
-## Keeping Render Awake (Preventing Inactivity Spindown)
+## 🌐 Cloud Deployment (e.g. Render / Koyeb)
 
-Render's free tier Web Services spin down (go to sleep) after **15 minutes of inactivity**. When slept, incoming Telegram messages or log evaluation requests will experience latency while the app cold-starts.
+1. Push this repository to GitHub.
+2. Create a new **Web Service** on [Render](https://render.com/).
+3. Configure build & start settings:
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `python bot.py`
+4. Add environment variables under **Environment** in the Render Dashboard:
+   - Set `TELEGRAM_BOT_TOKEN` and at least one LLM API key (`AIPIPE_TOKEN`, `GROQ_API_KEY`, etc.).
+   - Set `LOG_URL=auto` (the bot will auto-detect your Render URL and serve logs at `https://<your-app>.onrender.com/run.jsonl`).
+5. Click **Deploy Web Service**.
 
-To keep your bot active **24/7**, use any of the following pinging solutions:
+---
 
-### Option 1: External Pinger (UptimeRobot - Recommended)
+## ⏱️ Preventing Render Free Tier Spindown (24/7 Uptime)
 
-1. Sign up for a free account at [UptimeRobot.com](https://uptimerobot.com/).
-2. Click **+ Add New Monitor**.
-3. Configure the monitor details:
-   - **Monitor Type**: `HTTP(s)` or `Keyword`
+Render free tier instances go to sleep after **15 minutes of inactivity**. Use either of the following methods to keep your bot awake:
+
+### Option 1: Built-in Keep-Alive Pinger (Automatic)
+The bot includes a built-in background thread that automatically pings itself every 10 minutes when running on Render.
+- If `RENDER_EXTERNAL_URL` or `PING_URL` is set in the environment, the pinger automatically triggers every 600 seconds (`PING_INTERVAL`).
+
+### Option 2: External Health Monitor (UptimeRobot)
+1. Register a free account at [UptimeRobot](https://uptimerobot.com/).
+2. Add a new monitor:
+   - **Monitor Type**: `HTTP(s)`
    - **Friendly Name**: `TDS Data Analyst Bot`
-   - **URL (or IP)**: `https://<your-app-name>.onrender.com/ping` (or `/health`)
-   - **Monitoring Interval**: `5 minutes` or `10 minutes`
-4. Click **Create Monitor**. UptimeRobot will ping your server every few minutes, preventing Render from going idle.
+   - **URL**: `https://<your-render-app>.onrender.com/ping`
+   - **Interval**: `5 minutes` or `10 minutes`
 
-### Option 2: Built-in Self-Pinger
+---
 
-`bot.py` includes a built-in keep-alive background thread that periodically pings its own endpoint:
+## 🩺 Available Health & Log Endpoints
 
-1. In your Render Dashboard, add an environment variable:
-   - `RENDER_EXTERNAL_URL` = `https://<your-app-name>.onrender.com` (Render sets this automatically if enabled, or set `PING_URL=https://<your-app-name>.onrender.com`)
-   - `PING_INTERVAL` = `600` (optional, default 10 minutes)
-2. On startup, `bot.py` will launch a background thread that sends an HTTP GET request to `https://<your-app-name>.onrender.com/ping` every 10 minutes.
+| Endpoint | HTTP Method | Description |
+| :--- | :---: | :--- |
+| `/run.jsonl` or `/` | `GET` | Returns live JSONL logs containing incoming/outgoing events. |
+| `/ping` or `/health` | `GET` / `HEAD` | Returns `{"status":"ok","message":"pong"}` (HTTP 200). |
 
-### Available Health & Ping Endpoints
+---
 
-- `GET /ping` or `GET /health` or `GET /healthz` — Returns `{"status":"ok","message":"pong"}`
-- `HEAD /ping` or `HEAD /` — Returns `200 OK` (lightweight for HEAD pingers)
+## 📜 License
 
+Distributed under the MIT License for academic and evaluation purposes in the IITM BS Tools in Data Science (TDS) course.
