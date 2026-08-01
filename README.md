@@ -23,9 +23,9 @@ The bot automatically activates any provider for which an API key is present in 
 
 | Priority | Provider | Default Model | Key Env Variable | Strengths & Capabilities |
 | :---: | :--- | :--- | :--- | :--- |
-| **#1** | **AI Pipe** | `gpt-5-mini` | `AIPIPE_TOKEN` | **Flagship Intelligence**: Top-tier data analysis, math precision, and strict JSON adherence. |
-| **#2** | **Groq** | `llama-3.3-70b-versatile` | `GROQ_API_KEY` | **Ultra-Fast Speed**: ~300+ tokens/sec LPU hardware with 70B parameter model reasoning. |
-| **#3** | **Gemini API** | `gemini-flash-latest` | `GEMINI_API_KEY` | **Google Gemini**: Massive context window, strong math and structured data skills. |
+| **#1** | **Groq** | `llama-3.3-70b-versatile` | `GROQ_API_KEY` | **Ultra-Fast Speed**: ~300+ tokens/sec LPU hardware with 70B parameter model reasoning. |
+| **#2** | **Gemini API** | `gemini-flash-latest` | `GEMINI_API_KEY` | **Google Gemini**: Massive context window, strong math and structured data skills. |
+| **#3** | **AI Pipe** | `gpt-4o-mini` | `AIPIPE_TOKEN` | **Flagship Intelligence**: Top-tier data analysis, math precision, and strict JSON adherence. |
 | **#4** | **OpenRouter** | `meta-llama/llama-3.3-70b-instruct` | `OPENROUTER_API_KEY` | **Multi-Node Fallback**: Reliable 70B model fallback routed across OpenRouter's cloud network. |
 | **#5** | **NVIDIA NIM** | `nvidia/nemotron-mini-4b-instruct` | `NVIDIA_API_KEY` | **Lightweight Backup**: Fast 4B parameter native NVIDIA model as a final safety net. |
 

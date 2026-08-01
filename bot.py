@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import re
@@ -109,13 +110,6 @@ if not LOG_URL or LOG_URL == "auto":
 # List of supported LLM Providers in priority order (as given in .env).
 PROVIDERS = [
     {
-        "name": "AI Pipe",
-        "keys": ["AIPIPE_TOKEN"],
-        "base_url": "https://aipipe.org/openai/v1",
-        "default_model": "gpt-5-mini",
-        "model_env": "AIPIPE_MODEL",
-    },
-    {
         "name": "Groq",
         "keys": ["GROQ_API_KEY"],
         "base_url": "https://api.groq.com/openai/v1",
@@ -128,6 +122,13 @@ PROVIDERS = [
         "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
         "default_model": "gemini-flash-latest",
         "model_env": "GEMINI_MODEL",
+    },
+    {
+        "name": "AI Pipe",
+        "keys": ["AIPIPE_TOKEN"],
+        "base_url": "https://aipipe.org/openai/v1",
+        "default_model": "gpt-4o-mini",
+        "model_env": "AIPIPE_MODEL",
     },
     {
         "name": "OpenRouter",
@@ -180,7 +181,7 @@ def get_llm_response(messages: list) -> str:
             client = OpenAI(
                 base_url=provider["base_url"],
                 api_key=api_key,
-                timeout=30.0,
+                timeout=10.0,
             )
             response = client.chat.completions.create(
                 model=model,
@@ -294,8 +295,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
     log_event({"type": "incoming", "chat_id": chat_id, "text": user_text})
 
-    # Auto-fetch dataset/file URLs embedded in user prompt
-    extra_data = fetch_urls_in_text(user_text)
+    # Auto-fetch dataset/file URLs embedded in user prompt (non-blocking thread)
+    extra_data = await asyncio.to_thread(fetch_urls_in_text, user_text)
     prompt_content = user_text + extra_data
 
     history = conversation_history.setdefault(chat_id, [])
@@ -312,7 +313,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "explanation, no markdown, no code fences, just the raw JSON."
     )
     messages = [{"role": "system", "content": system_prompt}] + history[-6:]
-    message_content = get_llm_response(messages)
+    message_content = await asyncio.to_thread(get_llm_response, messages)
 
     reply_text = message_content.strip()
     history.append({"role": "assistant", "content": reply_text})
